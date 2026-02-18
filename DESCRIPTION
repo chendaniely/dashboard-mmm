@@ -1,0 +1,12 @@
+Package: YourProjectName
+Type: Project
+Version: 0.1.0
+Imports:
+    rsconnect,
+    tidyverse,
+    tidymodels,
+    rstanarm,
+    shiny,
+    bslib,
+    plotly
+Encoding: UTF-8
