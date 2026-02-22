@@ -37,6 +37,7 @@ library(scales)
 library(corrplot)
 library(knitr)
 library(kableExtra)
+library(pointblank)
 
 # Set theme for plots
 theme_set(theme_minimal(base_size = 12))
@@ -402,26 +403,106 @@ data |>
 
 # Data Quality
 
-```{r data-quality}
-# Check for missing values
+```{r data-quality-pointblank}
+# Create a comprehensive data validation agent using pointblank
+agent <-
+  create_agent(
+    tbl = data,
+    tbl_name = "Marketing Mix Data",
+    label = "Data Quality Validation Report"
+  ) |>
+  # Check for completeness (no missing values)
+  col_vals_not_null(columns = vars(date)) |>
+  col_vals_not_null(columns = vars(sales_revenue)) |>
+  col_vals_not_null(columns = vars(total_marketing_spend)) |>
+  col_vals_not_null(columns = all_of(spend_cols)) |>
+  col_vals_not_null(columns = vars(holiday_week)) |>
+
+  # Check date range (validate temporal bounds)
+  col_vals_between(
+    columns = vars(date),
+    left = as.Date("2023-01-01"),
+    right = as.Date("2024-12-31"),
+    na_pass = FALSE
+  ) |>
+
+  # Check sales revenue is positive
+  col_vals_gt(columns = vars(sales_revenue), value = 0) |>
+
+  # Check marketing spend values are non-negative
+  col_vals_gte(columns = vars(total_marketing_spend), value = 0) |>
+  col_vals_gte(columns = all_of(spend_cols), value = 0) |>
+
+  # Check holiday_week is binary (0 or 1)
+  col_vals_in_set(columns = vars(holiday_week), set = c(0, 1)) |>
+
+  # Check for reasonable upper bounds on spend (outlier detection)
+  col_vals_lt(columns = vars(total_marketing_spend), value = 1000) |>
+
+  # Check that total_marketing_spend equals sum of individual channels
+  col_vals_expr(
+    expr = ~ abs(total_marketing_spend - (tv_spend + radio_spend + display_ads_spend +
+                                          search_ads_spend + social_media_spend)) < 0.01
+  ) |>
+
+  # Validate data types
+  col_is_date(columns = vars(date)) |>
+  col_is_numeric(columns = vars(sales_revenue, total_marketing_spend)) |>
+  col_is_numeric(columns = all_of(spend_cols)) |>
+
+  # Check for duplicate dates
+  rows_distinct(columns = vars(date)) |>
+
+  # Interrogate the data
+  interrogate()
+
+# Display the validation report
+agent
+```
+
+## Validation Summary
+
+```{r validation-summary}
+# Extract validation results
+validation_summary <- get_agent_report(agent, display_table = FALSE)
+
+# Count passes and failures
+total_checks <- nrow(validation_summary)
+passed_checks <- sum(validation_summary$all_passed, na.rm = TRUE)
+failed_checks <- total_checks - passed_checks
+
+cat("Data Quality Validation Summary\n")
+cat("================================\n")
+cat("Total validation checks:", total_checks, "\n")
+cat("Passed:", passed_checks, "\n")
+cat("Failed:", failed_checks, "\n")
+cat("Pass rate:", round(100 * passed_checks / total_checks, 1), "%\n\n")
+
+# Store total_missing for backward compatibility with Key Findings section
 total_missing <- sum(is.na(data))
 
+if (failed_checks > 0) {
+  cat("⚠️ Some validation checks failed. Review the detailed report above.\n")
+} else {
+  cat("✅ All validation checks passed!\n")
+}
+```
+
+## Missing Values Analysis
+
+```{r missing-values}
+# Detailed missing values breakdown
 missing_by_column <- data |>
   summarise(across(everything(), ~sum(is.na(.)))) |>
   pivot_longer(everything(), names_to = "Column", values_to = "Missing_Count") |>
   mutate(Percentage = Missing_Count / nrow(data) * 100) |>
-  filter(Missing_Count > 0) |>
   arrange(desc(Missing_Count))
 
-if (nrow(missing_by_column) > 0) {
-  missing_by_column |>
-    kable(caption = "Missing Values by Column", digits = 2) |>
-    kable_styling(bootstrap_options = c("striped", "hover"))
-} else {
-  cat("No missing values detected in the dataset.\n")
-}
+missing_by_column |>
+  kable(caption = "Missing Values by Column", digits = 2) |>
+  kable_styling(bootstrap_options = c("striped", "hover"))
 
-cat("\nTotal missing values across all columns:", total_missing, "\n")
+cat("\nTotal missing values across all columns:", sum(missing_by_column$Missing_Count), "\n")
 ```
 
 # Key Findings
