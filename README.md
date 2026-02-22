@@ -120,19 +120,6 @@ metadata <- readRDS('saved_models/metadata.rds')
 4. **Model Analysis** (`model-analysis.qmd`) - Diagnostics and evaluation
 5. **Deployment** - Load models into Shiny dashboard
 
-## Next Steps
-
-- [ ] Parameter tuning via grid search/cross-validation
-- [ ] Add more sophisticated adstock functions (geometric, Weibull)
-- [ ] Implement budget optimization
-- [ ] Build interactive Shiny dashboard
-- [ ] Add forecast capabilities
-- [ ] Model validation and backtesting
-
-## License
-
-[Add your license here]
-
 ## Credits
 
 Linear regression modeling was done manually. Bayesian models, transformations (adstock and saturation), data pipeline script, and code documentation were created with assistance from Claude Code.
