@@ -1,4 +1,4 @@
-Package: YourProjectName
+Package: dashboard-mmm
 Type: Project
 Version: 0.1.0
 Imports:
@@ -8,5 +8,8 @@ Imports:
     rstanarm,
     shiny,
     bslib,
-    plotly
+    plotly,
+    pointblank,
+    corrplot,
+    kableExtra
 Encoding: UTF-8
