@@ -1,0 +1,235 @@
+<shift to positron>
+
+I've opened the repository in Positron and we'll take a look at our exploratory data analysis document.
+
+<click preview>
+
+we can click the preview button to render the document.
+
+<wait for it to render>
+
+The data and report has been synthetically generated so don't take any of the findings as fact.
+
+Here's our eda report.
+
+<scroll down to red univariate analysis>
+
+We can take a look at our sales revenue distribution across our time period.
+
+<scroll down to facet plot>
+
+and also see the individual channel breakdowns.
+
+<scroll down to box plot>
+
+One of the columns we have in this particular dataset is looking at whether or not a particular week is a holiday week.
+We can see some spike in sales on these weeks compared to non holiday weeks.
+
+<scroll down to temporal>
+
+And some of this is confirmed a bit more by looking at the weekly sales revenue where
+our highest spikes are right at the end of the year. during our holiday season.
+
+
+<scroll down to data validation>
+
+Finally, we can do some data quality checks with the point blank package.
+You can have this section at the top of the EDA report or in a in a separate script or document.
+
+
+<click on model.R>
+
+Now let's talk about modeling.
+
+Here is an example script that does some basic Marketing Mixed Modeling, or MMMs.
+
+This particular modeling script is made for this demo where you can run it as a regular R script, from the command line with command line arguments, and gets run by the shiny application we will show later.
+
+This isn't the best way to do an official deployment,
+but gives a lot more flexibility as a demo.
+
+
+Let's talk a bit about MMMs. There's a few things that make MMMs special:
+there's a temporal time-series component, there are carry over effects (meaning money spent now does not always mean immediate revenue), and there are diminishing returns where impact may decrease with spend.
+
+Here we'll fit 2 different models, a linear regression model and a weekly informative bayesian linear regression model. and then we'll fit these same models with the carryover and diminishing returns transformations for a total of 4 models.
+
+< scroll down to 116>
+
+One of the things tidy models dives us is the ability to split our data into training and testing sets.
+
+Tidy models also has a function that splits time series data into trianing and tesitng
+by keeping the temporal component of the data intact.
+
+Essentially we will train on the first 80% of the data to test on the last 20%
+
+<scroll down to lines 124>
+
+Or linear regression model is using tidymodels,
+
+<scroll down to line 211>
+
+we can write a function to calculate our adstock carry over effect
+
+<scroll down to line 248>
+
+and later our saturation or diminishing Returns
+
+< scroll to Lines 281 >
+
+We can then use tidyverse functions to mutate our data.
+
+<scroll to 314 >
+
+lastly we want to make sure we carry over the transformation values from the
+training set into the test set instead of treating the test set as a new dataset
+
+<scroll lines 349>
+
+Then we perform our model again on our dataset with these transforamtions applied.
+
+Our response variable is still predicting sales_revenue.
+
+<scroll to lines 389>
+
+for the last 2 models, we fit the same transformed and non-transformed data to a bayseian linear regression model
+
+Here we are using the rstanarm for bayesian applied regression modeling via stan.
+You can also look into using tidymodels for fitting linear regression models using stand.
+
+<select lines 418>
+
+In this example we're only using a weakly informative prior.
+This is where you would provide all your actual domain knowledge and incorporate it into your model.
+
+<run the code>
+
+<Scroll up to the model comparison table>
+
+<select transormed LR>
+
+From our initial model parameters, our linear regression model on the transformed Datahas the lowest test RMSE,
+so this might be the model we'd potentialyl choose to stick with or deploy.
+But also remember our bayesian model only has weakly informative priors on it, and it's not including a lot of information from the actual data.
+
+<click on app.R>
+
+Finally let's go past the EDA and work on presenting results.
+
+We will go and create a shiny application to show some descriptive statistics,
+but also provide a way for users to change the transformation parameters for the model.
+
+<run the application>
+
+This application is tied to our model.R file for this demo.
+so our shiny application will be loaded up pre-computed models, but also re-run our script as we
+change the transformation parameters.
+
+There are definitely more efficient ways to handle this kind of data and model changes.
+This demo is primary focused on making it easier to run the model and application code separately.
+
+<on the main tab>
+
+Here in the application we have a few main Key performance indicator cards on the top.
+This might be the most important set of numbers and values as you talk with stakeholders.
+THe rest of the first page gives the data showing the current spend and revenue trends.
+
+We can also see that our EDA analyssi is playing a role here in the shiny applicaiton.
+
+Finally, the ROI values are coming from the selected model (in this case it's our transformed linear regression model.)
+
+<second tab>
+
+<click>
+We can also do a bit od drilldown analysis by looking at individual Channels
+<click through a few channels to show reaction>
+
+<panel 3>
+
+Next we also use our model to optimize how we should allocate money to different channels.
+
+<click optimize budget>
+
+this will use the current model, and some user contraignts to allocate a given marketing budget.
+
+<change slider low> <max high>
+<re-optimize>
+
+<tab 4>
+
+FInally we can provide a user interface to re-generate models.
+In this particular example, all our models run fairly quickly,
+so we can get away with the current demo setup of re-running our modeling script.
+
+The entire application reacts to the select model,
+in this case the transformed linear regression model.
+
+We can swithc to our bayesian Model
+<slick bayes - non transformed>
+<slick overview>
+
+and you'll see how the ROI values in the overview page are reacting to the model changes.
+
+<click tab 4>
+
+we can also make a few what-if senario changes to our Model
+
+<click linear transform>
+<higher adstock>
+<lower saturation>
+<retrain>
+
+and retrain our models.
+
+and you can see that our new models will react in the applicaiton.
+
+<click overview tab 1>
+
+Now let's get this application deployed.
+
+We currently have this repository on github with all the code, applicaiton, and models.
+We can use Posit Connect or Posit connect Cloud to deploy our application.
+
+<go to connect cloud site>
+
+We'll go through a github deployment for connect cloud.
+
+Hewe'll sign in, and click publish
+
+<click publish>
+
+select shiny
+
+select our repository,
+point to our app.R file.
+
+Connect cloud will read our current renv.lock file to set up our environment for the applicaiton.
+
+and finally we cna publish our applicaiton.
+
+In this example, rstamarm will take a bit to compile and install...
+and would need a larger RAM instance.
+
+<click on pre-deployed application>
+
+If you end up with deployment issues you can go to the application settings
+and may need to bump your subscription to have a larger container.
+
+<show setting compute to 32gb>
+
+<note we might want to cut this part>
+
+<click other app>
+
+when the deployment is done we will have the same applicaiton we had locally,
+
+<click tab 4>
+
+low ad stock, high satuartion
+
+and we can retrain our models in an application we can share with others.
+
+<done demo>
+
+
+TODO: need a transition phrase to pass off to isabella

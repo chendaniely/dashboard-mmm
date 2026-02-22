@@ -5,7 +5,7 @@
 # were put in by Claude Code.
 #
 # This script is meade to be run:
-# 1. standalone in an interactive sesstion
+# 1. standalone in an interactive session
 # 2. command line with arguments
 # 3. sourced within a shiny app to change the parameters
 # This is not the best way to make model modification in a shiny app

@@ -1,0 +1,157 @@
+---
+title: "Marketing Mix Model Analysis"
+subtitle: "Model Diagnostics and Next Steps"
+author: "MMM Analysis"
+date: today
+format:
+  html:
+    code-fold: true
+    code-summary: "Show code"
+    toc: true
+    toc-depth: 3
+    toc-location: left
+    theme: cosmo
+    embed-resources: true
+execute:
+  warning: false
+  message: false
+---
+
+# Executive Summary
+
+This document provides a comprehensive analysis of four Marketing Mix Models (MMM):
+
+1. **Simple Linear Regression**: Baseline model with raw features
+2. **Transformed Linear Regression**: Adstock + saturation transformations
+3. **Bayesian LR (Transformed)**: Bayesian with transformations
+4. **Bayesian LR (Raw)**: Bayesian without transformations
+
+```{r setup}
+#| include: false
+library(tidyverse)
+library(tidymodels)
+library(rstanarm)
+library(patchwork)
+library(scales)
+library(bayesplot)
+
+# Load data
+data <- read_csv("data/synthetic-marketing-sales.csv", show_col_types = FALSE)
+
+# Load saved models
+model1 <- readRDS("saved_models/model1_simple_lr.rds")
+model2 <- readRDS("saved_models/model2_transformed_lr.rds")
+model3 <- readRDS("saved_models/model3_bayes_transformed.rds")
+model4 <- readRDS("saved_models/model4_bayes_raw.rds")
+comparison <- readRDS("saved_models/comparison_results.rds")
+params <- readRDS("saved_models/transformation_params.rds")
+metadata <- readRDS("saved_models/metadata.rds")
+
+train_data <- comparison$train_data_split
+test_data <- comparison$test_data_split
+```
+
+# Actual vs. Predicted Analysis
+
+```{r actual-vs-predicted-setup}
+# Get predictions for all models on test data
+model1_test_pred <- predict(model1$fit, test_data) %>%
+  bind_cols(test_data %>% select(date, sales_revenue)) %>%
+  mutate(model = "1. Simple LR")
+
+model2_test_pred <- predict(model2$fit, model2$test_data) %>%
+  bind_cols(model2$test_data %>% select(date, sales_revenue)) %>%
+  mutate(model = "2. Transformed LR")
+
+model3_test_pred <- tibble(
+  date = test_data$date,
+  sales_revenue = model3$test_data %>%
+    mutate(sales_revenue = test_data$sales_revenue) %>%
+    pull(sales_revenue),
+  .pred = predict(model3$fit, newdata = model3$test_data)
+) %>%
+  mutate(model = "3. Bayesian (Transformed)")
+
+model4_test_pred <- tibble(
+  date = test_data$date,
+  sales_revenue = model4$test_data %>%
+    mutate(sales_revenue = test_data$sales_revenue) %>%
+    pull(sales_revenue),
+  .pred = predict(model4$fit, newdata = model4$test_data)
+) %>%
+  mutate(model = "4. Bayesian (Raw)")
+
+all_predictions <- bind_rows(
+  model1_test_pred,
+  model2_test_pred,
+  model3_test_pred,
+  model4_test_pred
+)
+```
+
+```{r actual-vs-predicted-plot, fig.width=12, fig.height=8}
+ggplot(all_predictions, aes(x = date)) +
+  geom_line(aes(y = sales_revenue, color = "Actual"), linewidth = 1) +
+  geom_line(aes(y = .pred, color = "Predicted"), linewidth = 0.8, alpha = 0.7) +
+  facet_wrap(~model, ncol = 2, scales = "free_y") +
+  scale_color_manual(
+    values = c("Actual" = "#2E86AB", "Predicted" = "#A23B72"),
+    name = ""
+  ) +
+  scale_y_continuous(labels = label_comma()) +
+  labs(
+    title = "Actual vs. Predicted Sales Revenue",
+    subtitle = "Test set performance comparison across all models",
+    x = "Date",
+    y = "Sales Revenue ($)",
+    caption = paste0("Test period: ", min(test_data$date), " to ", max(test_data$date))
+  ) +
+  theme_minimal(base_size = 12) +
+  theme(
+    legend.position = "top",
+    plot.title = element_text(face = "bold", size = 16),
+    strip.text = element_text(face = "bold"),
+    panel.grid.minor = element_blank()
+  )
+```
+
+## Scatter Plots: Predicted vs. Actual
+
+```{r scatter-plots, fig.width=12, fig.height=8}
+ggplot(all_predictions, aes(x = sales_revenue, y = .pred)) +
+  geom_abline(intercept = 0, slope = 1, linetype = "dashed", color = "gray40") +
+  geom_point(alpha = 0.6, size = 2.5, color = "#2E86AB") +
+  geom_smooth(method = "lm", se = TRUE, color = "#A23B72", linewidth = 0.8) +
+  facet_wrap(~model, ncol = 2, scales = "free") +
+  scale_x_continuous(labels = label_comma()) +
+  scale_y_continuous(labels = label_comma()) +
+  labs(
+    title = "Predicted vs. Actual Sales (Test Set)",
+    subtitle = "Perfect predictions would lie on the diagonal line",
+    x = "Actual Sales Revenue ($)",
+    y = "Predicted Sales Revenue ($)"
+  ) +
+  theme_minimal(base_size = 12) +
+  theme(
+    plot.title = element_text(face = "bold", size = 16),
+    strip.text = element_text(face = "bold"),
+    panel.grid.minor = element_blank()
+  )
+```
+
+## Recommended Next Steps
+
+1. **Short Term**
+   - Implement channel-specific adstock parameters
+   - Add interaction terms between channels
+   - Test positive-constrained priors
+
+2. **Medium Term**
+   - Collect additional variables (competitor data, economic indicators)
+   - Implement hierarchical model for seasonal patterns
+   - Add lagged dependent variable (with appropriate caution)
+
+3. **Long Term**
+   - Set up automated model retraining pipeline
+   - Implement A/B testing framework for marketing spend
+   - Build budget optimization tool based on model insights
